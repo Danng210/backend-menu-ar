@@ -1,26 +1,25 @@
 <?php
-header("Access-Control-Allow-Origin: https://hamburger3d.netlify.app");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-
-require_once 'db.php';
-header('Content-Type: application/json');
-
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+require 'db.php';
 
 try {
-    $stmt = $pdo->query("SELECT ID_PEDIDO FROM pedido WHERE DATE(FECHA_PEDIDO) = CURDATE() ORDER BY FECHA_PEDIDO ASC");
-    $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN); // devuelve solo los IDs
-
+    $stmt = $pdo->query("
+        SELECT ID_PEDIDO 
+        FROM pedido 
+        WHERE DATE(FECHA_PEDIDO) = CURDATE() 
+        ORDER BY FECHA_PEDIDO ASC
+    ");
+    
     echo json_encode([
         'success' => true,
-        'pedidos' => $pedidos,
-        'cantidad' => count($pedidos)
+        'pedidos' => $stmt->fetchAll(PDO::FETCH_COLUMN),
+        'cantidad' => $stmt->rowCount()
     ]);
+
 } catch (PDOException $e) {
+    http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => "Error al obtener pedidos: " . $e->getMessage()
     ]);
 }
+?>

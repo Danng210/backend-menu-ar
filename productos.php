@@ -1,8 +1,4 @@
 <?php
-header("Access-Control-Allow-Origin: https://hamburger3d.netlify.app");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-
 require_once 'db.php';
 
 header('Content-Type: application/json');

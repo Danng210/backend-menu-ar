@@ -1,35 +1,25 @@
 <?php
-header("Access-Control-Allow-Origin: https://hamburger3d.netlify.app");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-
-require_once 'db.php';
-header('Content-Type: application/json');
+require 'db.php';
 
 try {
     if (!isset($_GET['nombre'])) {
-        throw new Exception("Nombre de producto no proporcionado");
+        throw new Exception("Nombre de producto no proporcionado", 400);
     }
 
-    $nombre = $_GET['nombre'];
-
-    $sql = "SELECT ID_PRODUCTO, NOMBRE_PRODUCTO, DESCRIPCION_PRODUCTO, PRECIO
-            FROM productos
-            WHERE NOMBRE_PRODUCTO = :nombre
-            LIMIT 1";
+    $stmt = $pdo->prepare("
+        SELECT ID_PRODUCTO, NOMBRE_PRODUCTO, DESCRIPCION_PRODUCTO, PRECIO
+        FROM productos
+        WHERE NOMBRE_PRODUCTO = :nombre
+        LIMIT 1
+    ");
     
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':nombre' => $nombre]);
-    $producto = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([':nombre' => $_GET['nombre']]);
+    $producto = $stmt->fetch();
 
-    if (!$producto) {
-        echo json_encode(null);
-    } else {
-        echo json_encode($producto);
-    }
+    echo $producto ? json_encode($producto) : json_encode(null);
 
 } catch (Exception $e) {
-    http_response_code(500);
+    http_response_code($e->getCode() ?: 500);
     echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

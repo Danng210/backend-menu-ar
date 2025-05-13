@@ -1,28 +1,24 @@
 <?php
-header("Access-Control-Allow-Origin: https://hamburger3d.netlify.app");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+require 'db.php';
 
+try {
+    if (!isset($_GET['id'])) {
+        throw new Exception("ID no proporcionado", 400);
+    }
 
-require_once 'db.php';
-header('Content-Type: application/json');
+    $stmt = $pdo->prepare("SELECT NOMBRE_PRODUCTO FROM productos WHERE ID_PRODUCTO = :id LIMIT 1");
+    $stmt->execute([':id' => $_GET['id']]);
+    $result = $stmt->fetch();
 
-if (!isset($_GET['id'])) {
-    echo json_encode(["error" => "ID no proporcionado"]);
-    exit;
-}
+    if ($result) {
+        echo json_encode($result);
+    } else {
+        http_response_code(404);
+        echo json_encode(["error" => "Producto no encontrado"]);
+    }
 
-$id = $_GET['id'];
-
-$sql = "SELECT NOMBRE_PRODUCTO FROM productos WHERE ID_PRODUCTO = :id LIMIT 1";
-$stmt = $pdo->prepare($sql);
-$stmt->execute(['id' => $id]);
-
-$result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-if ($result) {
-    echo json_encode($result);
-} else {
-    echo json_encode(["error" => "Producto no encontrado"]);
+} catch (Exception $e) {
+    http_response_code($e->getCode() ?: 500);
+    echo json_encode(["error" => $e->getMessage()]);
 }
 ?>

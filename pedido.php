@@ -1,37 +1,52 @@
 <?php
-header("Access-Control-Allow-Origin: https://hamburger3d.netlify.app");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+require 'db.php';
 
-header('Content-Type: application/json');
+try {
+    $input = json_decode(file_get_contents('php://input'), true);
+    $carrito = $input['carrito'] ?? [];
+    
+    if (empty($carrito)) {
+        throw new Exception('Carrito vacío');
+    }
 
-require_once 'db.php';
-
-$input = json_decode(file_get_contents('php://input'), true);
-
-$carrito = $input['carrito'] ?? [];
-$preferencias = $input['preferencias'] ?? '';
-$metodoPago = $input['metodo_pago'] ?? '';
-$total = $input['total'] ?? 0;
-
-if (empty($carrito)) {
-    echo json_encode(['success' => false, 'message' => 'Carrito vacío']);
-    exit;
-}
-
-function crearPedido($total, $preferencias, $metodoPago) {
-    global $pdo;
-
-    $sql = "INSERT INTO pedido (ID_PEDIDO, FECHA_PEDIDO, TOTAL_PEDIDO, PREFERENCIAS_PEDIDO, METODO_PAGO) 
-            VALUES (:id_pedido, NOW(), :total, :preferencias, :metodo_pago)";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        ':id_pedido' => $idPedido,
-        ':total' => $total,
-        ':preferencias' => $preferencias,
-        ':metodo_pago' => $metodoPago
+    // Insertar pedido
+    $sqlPedido = "
+        INSERT INTO pedido 
+        (FECHA_PEDIDO, TOTAL_PEDIDO, PREFERENCIAS_PEDIDO, METODO_PAGO) 
+        VALUES (NOW(), :total, :preferencias, :metodo_pago)
+    ";
+    
+    $stmtPedido = $pdo->prepare($sqlPedido);
+    $stmtPedido->execute([
+        ':total' => $input['total'],
+        ':preferencias' => $input['preferencias'] ?? '',
+        ':metodo_pago' => $input['metodo_pago'] ?? ''
     ]);
+    
+    $idPedido = $pdo->lastInsertId();
 
-    return $idPedido;
+    // Insertar detalles
+    foreach ($carrito as $item) {
+        $stmtDetalle = $pdo->prepare("
+            INSERT INTO detalle_pedido 
+            (FK_ID_PRODUCTO, CANTIDAD, SUBTOTAL, FK_ID_PEDIDO)
+            VALUES (:id_producto, :cantidad, :subtotal, :id_pedido)
+        ");
+        
+        $subtotal = $item['precio'] * $item['cantidad'];
+        
+        $stmtDetalle->execute([
+            ':id_producto' => $item['id_producto'],
+            ':cantidad' => $item['cantidad'],
+            ':subtotal' => $subtotal,
+            ':id_pedido' => $idPedido
+        ]);
+    }
+
+    echo json_encode(['success' => true, 'id_pedido' => $idPedido]);
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>
